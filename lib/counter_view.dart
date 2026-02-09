@@ -37,12 +37,58 @@ class _CounterViewState extends State<CounterView> {
                 decoration: const InputDecoration(border: OutlineInputBorder()),
               ),
             ),
+
+            const SizedBox(height: 30),
+            const Text(
+              "Riwayat Aktivitas:",
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 10),
+
+            // Tampilkan riwayat
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              height: 200,
+              child: _controller.history.isEmpty
+                  ? const Center(child: Text("Belum ada aktivitas"))
+                  : ListView.builder(
+                      itemCount: _controller.history.length,
+                      itemBuilder: (context, index) {
+                        final item = _controller.history[index];
+                        IconData icon = Icons.history;
+
+                        if (item.contains("Menambah")) {
+                          icon = Icons.add_circle;
+                        } else if (item.contains("Mengurangi")) {
+                          icon = Icons.remove_circle;
+                        } else if (item.contains("Reset")) {
+                          icon = Icons.refresh;
+                        }
+
+                        return Card(
+                          child: ListTile(
+                            leading: Icon(icon, color: Colors.blue),
+                            title: Text(
+                              item,
+                              style: const TextStyle(fontSize: 12),
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+            ),
           ],
         ),
       ),
       floatingActionButton: Row(
         mainAxisAlignment: MainAxisAlignment.end,
         children: [
+          FloatingActionButton(
+            heroTag: "reset",
+            onPressed: () => setState(() => _controller.reset()),
+            child: const Icon(Icons.refresh),
+          ),
+          const SizedBox(width: 10),
           FloatingActionButton(
             heroTag: "minus",
             onPressed: () => setState(() => _controller.decrement()),
