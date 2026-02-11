@@ -30,10 +30,8 @@ class CounterController {
   }
 
   void decrement() {
-    if (_counter >= _step) {
-      _counter -= _step;
-      _addHistory("Mengurangi nilai sebesar $_step");
-    }
+    _counter -= _step;
+    _addHistory("Mengurangi nilai sebesar $_step");
   }
 
   void reset() {
