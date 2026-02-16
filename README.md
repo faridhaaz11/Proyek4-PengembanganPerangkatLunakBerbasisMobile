@@ -59,14 +59,11 @@ lib/
 ## Cara Menjalankan Aplikasi
 
 1.  Masuk ke folder proyek:
-    ```sh
     cd logbook_app_001
-    ```
+
 2.  Hubungkan perangkat atau jalankan emulator.
 3.  Jalankan perintah:
-    ```sh
     flutter run
-    ```
 
 ## Self-Reflection
 
