@@ -1,15 +1,23 @@
 // login_controller.dart
 class LoginController {
-  // Database sederhana (Hardcoded)
-  final String _validUsername = "admin";
-  final String _validPassword = "123";
+  // Database Multiple Users menggunakan Map<String, String>
+  // Key = username, Value = password
+  final Map<String, String> _users = {
+    'admin': '123',
+    'faridha': 'password',
+    'user1': 'user123',
+  };
 
   // Fungsi pengecekan (Logic-Only)
-  // Fungsi ini mengembalikan true jika cocok, false jika salah.
+  // Fungsi untuk mengembalikan true jika username ada dan password cocok
   bool login(String username, String password) {
-    if (username == _validUsername && password == _validPassword) {
+    // Cek apakah username ada di Map dan passwordnya cocok
+    if (_users.containsKey(username) && _users[username] == password) {
       return true;
     }
     return false;
   }
+
+  // Getter untuk mendapatkan daftar username
+  List<String> get availableUsers => _users.keys.toList();
 }
