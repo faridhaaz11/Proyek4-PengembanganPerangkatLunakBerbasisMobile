@@ -50,7 +50,12 @@ class CounterController {
     final savedHistory = prefs.getStringList(_historyKey);
     if (savedHistory != null) {
       _history.clear();
-      _history.addAll(savedHistory);
+      // Ambil hanya 5 riwayat terakhir jika data lama lebih dari 5
+      if (savedHistory.length > 5) {
+        _history.addAll(savedHistory.sublist(savedHistory.length - 5));
+      } else {
+        _history.addAll(savedHistory);
+      }
     }
   }
 
@@ -74,12 +79,10 @@ class CounterController {
     final time =
         "${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}";
 
-    // Format: "User admin menambah +5 pada jam 10:00"
-    String userPrefix = _username.isNotEmpty ? "User $_username " : "";
-    _history.add("$userPrefix$action pada jam $time");
+    _history.add("$action pada jam $time");
 
-    // Batasi hanya 10 riwayat terakhir
-    if (_history.length > 10) {
+    // Batasi hanya 5 riwayat terakhir
+    if (_history.length > 5) {
       _history.removeAt(0); // Hapus data paling lama
     }
   }
@@ -88,19 +91,19 @@ class CounterController {
 
   Future<void> increment() async {
     _counter += _step;
-    _addHistory("menambah +$_step");
+    _addHistory("$_username menambahkan nilai sebesar $_step");
     await saveAllData(); // Auto-save setelah perubahan
   }
 
   Future<void> decrement() async {
     _counter -= _step;
-    _addHistory("mengurangi -$_step");
+    _addHistory("$_username mengurangi nilai sebesar $_step");
     await saveAllData(); // Auto-save setelah perubahan
   }
 
   Future<void> reset() async {
     _counter = 0;
-    _addHistory("reset counter ke 0");
+    _addHistory("$_username mereset counter ke 0");
     await saveAllData(); // Auto-save setelah perubahan
   }
 }

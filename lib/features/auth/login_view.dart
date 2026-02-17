@@ -120,7 +120,12 @@ class _LoginViewState extends State<LoginView> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text("Login Gatekeeper")),
+      appBar: AppBar(
+        title: const Text("Login Gatekeeper"),
+        backgroundColor: const Color(0xFFE8E0F0),
+        foregroundColor: const Color(0xFF5B4B8A),
+        elevation: 0,
+      ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
