@@ -27,7 +27,7 @@ class _OnboardingViewState extends State<OnboardingView> {
           'Catat setiap aktivitas Anda dengan mudah.\nTambah, kurangi, atau reset counter sesuai kebutuhan.',
     },
     {
-      'image': 'assets/images/login.png',
+      'image': 'assets/images/masuk.png',
       'title': 'Mulai Sekarang',
       'description':
           'Login dengan akun Anda untuk memulai.\nSemua data tersimpan aman dan dapat diakses kapan saja.',

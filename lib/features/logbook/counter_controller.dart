@@ -92,18 +92,18 @@ class CounterController {
   Future<void> increment() async {
     _counter += _step;
     _addHistory("$_username menambahkan nilai sebesar $_step");
-    await saveAllData(); // Auto-save setelah perubahan
+    await saveAllData(); // Auto save setelah perubahan
   }
 
   Future<void> decrement() async {
     _counter -= _step;
     _addHistory("$_username mengurangi nilai sebesar $_step");
-    await saveAllData(); // Auto-save setelah perubahan
+    await saveAllData(); // Auto save setelah perubahan
   }
 
   Future<void> reset() async {
     _counter = 0;
     _addHistory("$_username mereset counter ke 0");
-    await saveAllData(); // Auto-save setelah perubahan
+    await saveAllData(); // Auto save setelah perubahan
   }
 }

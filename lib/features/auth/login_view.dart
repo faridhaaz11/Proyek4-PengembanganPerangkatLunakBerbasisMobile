@@ -120,63 +120,174 @@ class _LoginViewState extends State<LoginView> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.white,
       appBar: AppBar(
-        title: const Text("Login Gatekeeper"),
-        backgroundColor: const Color(0xFFE8E0F0),
-        foregroundColor: const Color(0xFF5B4B8A),
-        elevation: 0,
+        title: const Text(
+          "Login",
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
+        backgroundColor: const Color(0xFF5B4B8A),
+        foregroundColor: Colors.white,
+        centerTitle: true,
+        elevation: 2,
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          children: [
-            TextField(
-              controller: _userController,
-              decoration: const InputDecoration(
-                labelText: "Username",
-                prefixIcon: Icon(Icons.person),
-              ),
+      body: SafeArea(
+        child: SingleChildScrollView(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(
+              horizontal: 24.0,
+              vertical: 16.0,
             ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: _passController,
-              obscureText: _obscurePassword, // Kontrol show/hide
-              decoration: InputDecoration(
-                labelText: "Password",
-                prefixIcon: const Icon(Icons.lock),
-                // Ikon mata untuk Show/Hide Password
-                suffixIcon: IconButton(
-                  icon: Icon(
-                    _obscurePassword ? Icons.visibility_off : Icons.visibility,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                const SizedBox(height: 20),
+
+                // Gambar Login
+                Center(
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(16),
+                    child: Image.asset(
+                      'assets/images/login.png',
+                      height: 180,
+                      fit: BoxFit.contain,
+                    ),
                   ),
-                  onPressed: () {
-                    setState(() {
-                      _obscurePassword = !_obscurePassword;
-                    });
-                  },
                 ),
-              ),
-            ),
-            const SizedBox(height: 20),
 
-            // Tombol Login dengan kondisi disabled
-            ElevatedButton(
-              onPressed: _isLoginDisabled ? null : _handleLogin,
-              child: _isLoginDisabled
-                  ? Text("Tunggu $_countdown detik...")
-                  : const Text("Masuk"),
-            ),
+                const SizedBox(height: 24),
 
-            // Info akun untuk testing
-            const SizedBox(height: 30),
-            const Text(
-              "Akun tersedia:",
-              style: TextStyle(fontWeight: FontWeight.bold),
+                // Header Text
+                const Text(
+                  "Selamat Datang!",
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF5B4B8A),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  "Silakan masuk untuk melanjutkan",
+                  textAlign: TextAlign.center,
+                  style: TextStyle(fontSize: 14, color: Colors.grey),
+                ),
+
+                const SizedBox(height: 32),
+
+                // Username Field
+                TextField(
+                  controller: _userController,
+                  decoration: InputDecoration(
+                    labelText: "Username",
+                    hintText: "Masukkan username",
+                    prefixIcon: const Icon(
+                      Icons.person_outline,
+                      color: Color(0xFF5B4B8A),
+                    ),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: const BorderSide(color: Color(0xFFE8E0F0)),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: const BorderSide(color: Color(0xFFE8E0F0)),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: const BorderSide(
+                        color: Color(0xFF5B4B8A),
+                        width: 2,
+                      ),
+                    ),
+                    filled: true,
+                    fillColor: const Color(0xFFF8F6FB),
+                  ),
+                ),
+
+                const SizedBox(height: 16),
+
+                // Password Field
+                TextField(
+                  controller: _passController,
+                  obscureText: _obscurePassword,
+                  decoration: InputDecoration(
+                    labelText: "Password",
+                    hintText: "Masukkan password",
+                    prefixIcon: const Icon(
+                      Icons.lock_outline,
+                      color: Color(0xFF5B4B8A),
+                    ),
+                    suffixIcon: IconButton(
+                      icon: Icon(
+                        _obscurePassword
+                            ? Icons.visibility_off_outlined
+                            : Icons.visibility_outlined,
+                        color: const Color(0xFF5B4B8A),
+                      ),
+                      onPressed: () {
+                        setState(() {
+                          _obscurePassword = !_obscurePassword;
+                        });
+                      },
+                    ),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: const BorderSide(color: Color(0xFFE8E0F0)),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: const BorderSide(color: Color(0xFFE8E0F0)),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: const BorderSide(
+                        color: Color(0xFF5B4B8A),
+                        width: 2,
+                      ),
+                    ),
+                    filled: true,
+                    fillColor: const Color(0xFFF8F6FB),
+                  ),
+                ),
+
+                const SizedBox(height: 24),
+
+                // Tombol Login
+                SizedBox(
+                  height: 50,
+                  child: ElevatedButton(
+                    onPressed: _isLoginDisabled ? null : _handleLogin,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF5B4B8A),
+                      foregroundColor: Colors.white,
+                      disabledBackgroundColor: Colors.grey.shade400,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      elevation: 2,
+                    ),
+                    child: _isLoginDisabled
+                        ? Text(
+                            "Tunggu $_countdown detik...",
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          )
+                        : const Text(
+                            "Masuk",
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                  ),
+                ),
+              ],
             ),
-            const Text("admin / 123"),
-            const Text("faridha / password"),
-            const Text("user1 / user123"),
-          ],
+          ),
         ),
       ),
     );
