@@ -1,8 +1,9 @@
 // main.dart
 import 'package:flutter/material.dart';
+import 'package:logbook_app_001/features/onboarding/onboarding_view.dart';
 
 // Sesuaikan path import dengan struktur folder baru
-import 'package:logbook_app_001/features/onboarding/onboarding_view.dart';
+import 'features/logbook/log_view.dart';
 
 void main() {
   runApp(const MyApp());
