@@ -88,7 +88,36 @@ class _LogViewState extends State<LogView> {
               valueListenable: _controller.filteredLogs,
               builder: (context, filteredLogs, child) {
                 if (filteredLogs.isEmpty) {
-                  return const Center(child: Text("Belum ada catatan."));
+                  return Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      mainAxisSize: MainAxisSize.max,
+                      children: [
+                        const Spacer(flex: 2),
+                        SizedBox(
+                          height: 180,
+                          child: Image.asset(
+                            'assets/images/AddNotes.png',
+                            fit: BoxFit.contain,
+                          ),
+                        ),
+                        const SizedBox(height: 24),
+                        const Text(
+                          "Belum ada catatan",
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        const Text(
+                          "Yuk, tambahkan catatan baru dengan tombol + di bawah!",
+                          style: TextStyle(fontSize: 14, color: Colors.grey),
+                        ),
+                        const Spacer(flex: 3),
+                      ],
+                    ),
+                  );
                 }
                 return ListView.builder(
                   itemCount: filteredLogs.length,
