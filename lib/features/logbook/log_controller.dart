@@ -5,11 +5,17 @@ import 'models/log_model.dart';
 
 class LogController {
   final ValueNotifier<List<LogModel>> logsNotifier = ValueNotifier([]);
+  // List cadangan untuk hasil pencarian
+  ValueNotifier<List<LogModel>> filteredLogs = ValueNotifier([]);
   late String _username;
 
   LogController([String username = ""]) {
     _username = username;
     loadFromDisk();
+    // Inisialisasi filteredLogs dengan data awal
+    logsNotifier.addListener(() {
+      filteredLogs.value = List<LogModel>.from(logsNotifier.value);
+    });
   }
 
   String get _storageKey => 'user_logs_data_$_username';
@@ -17,6 +23,18 @@ class LogController {
   void setUsername(String username) {
     _username = username;
     loadFromDisk();
+    // filteredLogs akan diupdate otomatis oleh listener
+  }
+
+  // Fitur search/filter log berdasarkan judul
+  void searchLog(String query) {
+    if (query.isEmpty) {
+      filteredLogs.value = List<LogModel>.from(logsNotifier.value);
+    } else {
+      filteredLogs.value = logsNotifier.value
+          .where((log) => log.title.toLowerCase().contains(query.toLowerCase()))
+          .toList();
+    }
   }
 
   void addLog(String title, String desc) {
