@@ -1,8 +1,12 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'log_controller.dart';
 import 'models/log_model.dart';
-import 'package:logbook_app_001/features/auth/login_view.dart';
 import 'package:logbook_app_001/features/onboarding/onboarding_view.dart';
+import 'package:logbook_app_001/helpers/log_helper.dart';
+import 'package:logbook_app_001/helpers/connection_guard.dart';
+import 'package:logbook_app_001/helpers/time_formatter.dart';
+import 'package:logbook_app_001/services/mongo_service.dart';
 
 class LogView extends StatefulWidget {
   final String username;
@@ -12,16 +16,73 @@ class LogView extends StatefulWidget {
 }
 
 class _LogViewState extends State<LogView> {
-  late final LogController _controller;
-  late String _greeting;
+  final LogController _controller = LogController();
+  late Future<List<LogModel>> _logsFuture;
   final List<String> _categories = ['Pekerjaan', 'Pribadi', 'Urgent'];
   String _selectedCategory = 'Pekerjaan';
+
+  // Offline banner
+  bool _isOffline = false;
+  StreamSubscription<bool>? _connectivitySub;
 
   @override
   void initState() {
     super.initState();
-    _controller = LogController(widget.username);
-    _updateGreeting();
+    _logsFuture = _loadLogs();
+
+    // Pantau perubahan koneksi secara realtime
+    _connectivitySub = ConnectionGuard.onConnectivityChanged.listen((online) {
+      if (!mounted) return;
+      setState(() => _isOffline = !online);
+      if (online && _isOffline) {
+        // Koneksi pulih: refresh otomatis
+        _refreshLogs();
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _connectivitySub?.cancel();
+    super.dispose();
+  }
+
+  Future<List<LogModel>> _loadLogs() async {
+    await LogHelper.writeLog(
+      "UI: Memulai koneksi ke MongoDB Atlas...",
+      source: "log_view.dart",
+    );
+    await MongoService().connect().timeout(
+      const Duration(seconds: 15),
+      onTimeout: () => throw Exception(
+        "Koneksi Cloud Timeout. Periksa sinyal/IP Whitelist.",
+      ),
+    );
+    await LogHelper.writeLog(
+      "UI: Koneksi berhasil, mengambil data...",
+      source: "log_view.dart",
+    );
+    return MongoService().getLogs(username: widget.username);
+  }
+
+  void _refreshLogs() {
+    setState(() {
+      _logsFuture = MongoService().getLogs(username: widget.username);
+    });
+  }
+
+  Future<void> _onRefresh() async {
+    await LogHelper.writeLog(
+      "UI: Pull-to-Refresh dipicu pengguna",
+      source: "log_view.dart",
+      level: 3,
+    );
+    final freshData = await MongoService().getLogs(username: widget.username);
+    if (mounted) {
+      setState(() {
+        _logsFuture = Future.value(freshData);
+      });
+    }
   }
 
   final TextEditingController _titleController = TextEditingController();
@@ -77,120 +138,223 @@ class _LogViewState extends State<LogView> {
       ),
       body: Column(
         children: [
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  "$_greeting, ${widget.username}",
-                  style: const TextStyle(
-                    fontSize: 22,
-                    fontWeight: FontWeight.bold,
-                  ),
+          // Banner Offline — muncul saat koneksi terputus
+          if (_isOffline)
+            Material(
+              elevation: 4,
+              child: Container(
+                width: double.infinity,
+                color: Colors.orange.shade700,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 10,
                 ),
-                const SizedBox(height: 4),
-              ],
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.all(8.0),
-            child: TextField(
-              onChanged: (value) => _controller.searchLog(value),
-              decoration: const InputDecoration(
-                labelText: "Cari Catatan...",
-                prefixIcon: Icon(Icons.search),
-                border: OutlineInputBorder(),
+                child: const Row(
+                  children: [
+                    Icon(Icons.wifi_off, color: Colors.white, size: 20),
+                    SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        'Offline Mode — Tidak ada koneksi internet. '
+                        'Data baru tidak dapat disinkronkan.',
+                        style: TextStyle(color: Colors.white, fontSize: 13),
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
-          ),
           Expanded(
-            child: ValueListenableBuilder<List<LogModel>>(
-              valueListenable: _controller.filteredLogs,
-              builder: (context, filteredLogs, child) {
-                if (filteredLogs.isEmpty) {
-                  return Center(
+            child: FutureBuilder<List<LogModel>>(
+              future: _logsFuture,
+              builder: (context, snapshot) {
+                // 1. Tampilan saat sedang menunggu respons dari Cloud
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(
                     child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      mainAxisSize: MainAxisSize.max,
+                      mainAxisSize: MainAxisSize.min,
                       children: [
-                        const Spacer(flex: 2),
-                        SizedBox(
-                          height: 180,
-                          child: Image.asset(
-                            'assets/images/AddNotes.png',
-                            fit: BoxFit.contain,
-                          ),
-                        ),
-                        const SizedBox(height: 24),
-                        const Text(
-                          "Belum ada catatan",
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        const Text(
-                          "Yuk, tambahkan catatan baru dengan tombol + di bawah!",
-                          style: TextStyle(fontSize: 14, color: Colors.grey),
-                        ),
-                        const Spacer(flex: 3),
+                        CircularProgressIndicator(),
+                        SizedBox(height: 16),
+                        Text("Menghubungkan ke MongoDB Atlas..."),
                       ],
                     ),
                   );
                 }
-                Color getCategoryColor(String category) {
-                  switch (category) {
-                    case 'Pekerjaan':
-                      return Colors.blue.shade100;
-                    case 'Pribadi':
-                      return Colors.green.shade100;
-                    case 'Urgent':
-                      return Colors.red.shade100;
-                    default:
-                      return Colors.grey.shade200;
-                  }
+                // 2. Tampilan jika terjadi error koneksi
+                if (snapshot.hasError) {
+                  final isOfflineError = snapshot.error is OfflineException;
+                  return Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(32.0),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            isOfflineError
+                                ? Icons.wifi_off
+                                : Icons.error_outline,
+                            size: 72,
+                            color: isOfflineError
+                                ? Colors.orange.shade700
+                                : Colors.red,
+                          ),
+                          const SizedBox(height: 16),
+                          Text(
+                            isOfflineError
+                                ? '⚠️ Offline Mode Warning'
+                                : 'Gagal Terhubung',
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              color: isOfflineError
+                                  ? Colors.orange.shade700
+                                  : Colors.red,
+                            ),
+                          ),
+                          const SizedBox(height: 10),
+                          Text(
+                            snapshot.error.toString(),
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(fontSize: 14),
+                          ),
+                          const SizedBox(height: 24),
+                          ElevatedButton.icon(
+                            icon: const Icon(Icons.refresh),
+                            label: const Text("Coba Lagi"),
+                            onPressed: () =>
+                                setState(() => _logsFuture = _loadLogs()),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
                 }
-
-                return ListView.builder(
-                  itemCount: filteredLogs.length,
-                  itemBuilder: (context, index) {
-                    final log = filteredLogs[index];
-                    return Card(
-                      color: getCategoryColor(log.category),
-                      child: ListTile(
-                        leading: const Icon(Icons.note),
-                        title: Text(log.title),
-                        subtitle: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(log.description),
-                            const SizedBox(height: 4),
-                            Text(
-                              log.category,
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                color: Colors.black87,
+                // 3. Tampilan jika loading selesai tapi data kosong
+                final logs = snapshot.data ?? [];
+                if (logs.isEmpty) {
+                  return RefreshIndicator(
+                    onRefresh: _onRefresh,
+                    child: SingleChildScrollView(
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      child: SizedBox(
+                        height: MediaQuery.of(context).size.height * 0.6,
+                        child: const Center(
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.cloud_off,
+                                size: 64,
+                                color: Colors.grey,
                               ),
-                            ),
-                          ],
-                        ),
-                        trailing: Wrap(
-                          children: [
-                            IconButton(
-                              icon: const Icon(Icons.edit, color: Colors.blue),
-                              onPressed: () => _showEditLogDialog(index, log),
-                            ),
-                            IconButton(
-                              icon: const Icon(Icons.delete, color: Colors.red),
-                              onPressed: () => _controller.removeLog(index),
-                            ),
-                          ],
+                              SizedBox(height: 16),
+                              Text("Data Kosong"),
+                              SizedBox(height: 8),
+                              Text(
+                                "Tarik ke bawah untuk memperbarui",
+                                style: TextStyle(
+                                  color: Colors.grey,
+                                  fontSize: 12,
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
-                    );
-                  },
+                    ),
+                  );
+                }
+                // 4. Jika data sudah masuk, tampilkan List
+                return RefreshIndicator(
+                  onRefresh: _onRefresh,
+                  child: ListView.builder(
+                    itemCount: logs.length,
+                    itemBuilder: (context, index) {
+                      final log = logs[index];
+                      return Card(
+                        margin: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 6,
+                        ),
+                        child: ListTile(
+                          isThreeLine: true,
+                          leading: const Icon(
+                            Icons.cloud_done,
+                            color: Colors.green,
+                          ),
+                          title: Text(log.title),
+                          subtitle: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(log.description),
+                              const SizedBox(height: 2),
+                              Row(
+                                children: [
+                                  const Icon(
+                                    Icons.access_time,
+                                    size: 12,
+                                    color: Colors.grey,
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Flexible(
+                                    child: Text(
+                                      TimeFormatter.relative(log.date),
+                                      overflow: TextOverflow.ellipsis,
+                                      style: const TextStyle(
+                                        fontSize: 11,
+                                        color: Colors.grey,
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 6,
+                                      vertical: 1,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: Colors.indigo.shade50,
+                                      borderRadius: BorderRadius.circular(4),
+                                    ),
+                                    child: Text(
+                                      log.category,
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        color: Colors.indigo.shade700,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                          trailing: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              IconButton(
+                                icon: const Icon(
+                                  Icons.edit,
+                                  color: Colors.blue,
+                                ),
+                                onPressed: () => _showEditLogDialog(index, log),
+                              ),
+                              IconButton(
+                                icon: const Icon(
+                                  Icons.delete,
+                                  color: Colors.red,
+                                ),
+                                onPressed: () async {
+                                  await _controller.removeLog(index);
+                                  _refreshLogs();
+                                },
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    },
+                  ),
                 );
               },
             ),
@@ -202,22 +366,6 @@ class _LogViewState extends State<LogView> {
         child: const Icon(Icons.add),
       ),
     );
-  }
-
-  void _updateGreeting() {
-    final hour = DateTime.now().hour;
-
-    setState(() {
-      if (hour >= 5 && hour < 12) {
-        _greeting = "Selamat Pagi";
-      } else if (hour >= 12 && hour < 15) {
-        _greeting = "Selamat Siang";
-      } else if (hour >= 15 && hour < 18) {
-        _greeting = "Selamat Sore";
-      } else {
-        _greeting = "Selamat Malam";
-      }
-    });
   }
 
   void _showAddLogDialog() {
@@ -261,15 +409,17 @@ class _LogViewState extends State<LogView> {
             child: const Text("Batal"),
           ),
           ElevatedButton(
-            onPressed: () {
-              _controller.addLog(
+            onPressed: () async {
+              await _controller.addLog(
                 _titleController.text,
                 _contentController.text,
                 _selectedCategory,
+                widget.username,
               );
               _titleController.clear();
               _contentController.clear();
-              Navigator.pop(context);
+              if (mounted) Navigator.pop(context);
+              _refreshLogs();
             },
             child: const Text("Simpan"),
           ),
@@ -315,8 +465,8 @@ class _LogViewState extends State<LogView> {
             child: const Text("Batal"),
           ),
           ElevatedButton(
-            onPressed: () {
-              _controller.updateLog(
+            onPressed: () async {
+              await _controller.updateLog(
                 index,
                 _titleController.text,
                 _contentController.text,
@@ -324,7 +474,8 @@ class _LogViewState extends State<LogView> {
               );
               _titleController.clear();
               _contentController.clear();
-              Navigator.pop(context);
+              if (mounted) Navigator.pop(context);
+              _refreshLogs();
             },
             child: const Text("Update"),
           ),

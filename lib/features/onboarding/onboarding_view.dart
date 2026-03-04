@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'package:logbook_app_001/features/auth/login_view.dart';
+import 'package:logbook_app_001/helpers/log_helper.dart';
 
 class OnboardingView extends StatefulWidget {
   const OnboardingView({super.key});
@@ -11,6 +12,14 @@ class OnboardingView extends StatefulWidget {
 
 class _OnboardingViewState extends State<OnboardingView> {
   int step = 1; // Variabel state untuk melacak langkah onboarding
+
+  @override
+  void initState() {
+    super.initState();
+    // Plugin platform (path_provider) dijamin siap saat widget pertama mount.
+    // Flush semua log yang tertahan di buffer ke file.
+    LogHelper.markPluginReady();
+  }
 
   // Data onboarding
   final List<Map<String, String>> _onboardingData = [

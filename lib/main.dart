@@ -1,11 +1,43 @@
 // main.dart
 import 'package:flutter/material.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:intl/date_symbol_data_local.dart';
 import 'package:logbook_app_001/features/onboarding/onboarding_view.dart';
+import 'package:logbook_app_001/helpers/log_helper.dart';
+import 'package:logbook_app_001/services/mongo_service.dart';
 
-// Sesuaikan path import dengan struktur folder baru
-import 'features/logbook/log_view.dart';
+void main() async {
+  // Wajib untuk operasi asinkron sebelum runApp
+  WidgetsFlutterBinding.ensureInitialized();
 
-void main() {
+  // Inisialisasi locale Indonesia untuk intl (TimeFormatter)
+  await initializeDateFormatting('id_ID');
+
+  // Load konfigurasi dari file .env
+  await dotenv.load(fileName: ".env");
+
+  await LogHelper.writeLog(
+    "App starting — .env loaded",
+    source: "main.dart",
+    level: 2,
+  );
+
+  // Jabat tangan (handshake) dengan MongoDB Atlas sebelum UI tampil
+  try {
+    await MongoService().connect();
+    await LogHelper.writeLog(
+      "MongoDB handshake successful — app ready",
+      source: "main.dart",
+      level: 2,
+    );
+  } catch (e) {
+    await LogHelper.writeLog(
+      "MongoDB handshake failed: $e",
+      source: "main.dart",
+      level: 1,
+    );
+  }
+
   runApp(const MyApp());
 }
 
