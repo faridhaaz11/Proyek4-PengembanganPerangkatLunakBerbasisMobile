@@ -1,3 +1,6 @@
+# Environment variables (JANGAN dipush — berisi data sensitif seperti MONGODB_URI)
+.env
+
 # Miscellaneous
 *.class
 *.log
