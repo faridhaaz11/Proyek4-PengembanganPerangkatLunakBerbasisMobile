@@ -44,6 +44,7 @@ class _LogViewState extends State<LogView> {
   @override
   void dispose() {
     _connectivitySub?.cancel();
+    _searchController.dispose();
     super.dispose();
   }
 
@@ -62,12 +63,15 @@ class _LogViewState extends State<LogView> {
       "UI: Koneksi berhasil, mengambil data...",
       source: "log_view.dart",
     );
-    return MongoService().getLogs(username: widget.username);
+    await _controller.loadFromDisk(username: widget.username);
+    return _controller.logs;
   }
 
   void _refreshLogs() {
     setState(() {
-      _logsFuture = MongoService().getLogs(username: widget.username);
+      _logsFuture = _controller
+          .loadFromDisk(username: widget.username)
+          .then((_) => _controller.logs);
     });
   }
 
@@ -77,16 +81,18 @@ class _LogViewState extends State<LogView> {
       source: "log_view.dart",
       level: 3,
     );
-    final freshData = await MongoService().getLogs(username: widget.username);
+    await _controller.loadFromDisk(username: widget.username);
     if (mounted) {
       setState(() {
-        _logsFuture = Future.value(freshData);
+        _logsFuture = Future.value(_controller.logs);
       });
     }
   }
 
   final TextEditingController _titleController = TextEditingController();
   final TextEditingController _contentController = TextEditingController();
+  final TextEditingController _searchController = TextEditingController();
+  String _searchQuery = '';
 
   @override
   Widget build(BuildContext context) {
@@ -164,6 +170,33 @@ class _LogViewState extends State<LogView> {
                 ),
               ),
             ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(12, 8, 12, 4),
+            child: TextField(
+              controller: _searchController,
+              decoration: InputDecoration(
+                hintText: 'Cari catatan...',
+                prefixIcon: const Icon(Icons.search),
+                suffixIcon: _searchQuery.isNotEmpty
+                    ? IconButton(
+                        icon: const Icon(Icons.clear),
+                        onPressed: () {
+                          _searchController.clear();
+                          setState(() => _searchQuery = '');
+                        },
+                      )
+                    : null,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 10,
+                ),
+              ),
+              onChanged: (value) => setState(() => _searchQuery = value),
+            ),
+          ),
           Expanded(
             child: FutureBuilder<List<LogModel>>(
               future: _logsFuture,
@@ -266,90 +299,195 @@ class _LogViewState extends State<LogView> {
                   );
                 }
                 // 4. Jika data sudah masuk, tampilkan List
+                final filteredLogs = _searchQuery.isEmpty
+                    ? logs
+                    : logs
+                          .where(
+                            (l) =>
+                                l.title.toLowerCase().contains(
+                                  _searchQuery.toLowerCase(),
+                                ) ||
+                                l.description.toLowerCase().contains(
+                                  _searchQuery.toLowerCase(),
+                                ) ||
+                                l.category.toLowerCase().contains(
+                                  _searchQuery.toLowerCase(),
+                                ),
+                          )
+                          .toList();
+                if (filteredLogs.isEmpty && _searchQuery.isNotEmpty) {
+                  return const Center(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.search_off, size: 64, color: Colors.grey),
+                        SizedBox(height: 16),
+                        Text('Tidak ada hasil ditemukan'),
+                      ],
+                    ),
+                  );
+                }
                 return RefreshIndicator(
                   onRefresh: _onRefresh,
                   child: ListView.builder(
-                    itemCount: logs.length,
+                    itemCount: filteredLogs.length,
                     itemBuilder: (context, index) {
-                      final log = logs[index];
-                      return Card(
-                        margin: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 6,
+                      final log = filteredLogs[index];
+                      final realIndex = logs.indexOf(log);
+                      return Dismissible(
+                        key: Key(log.id?.oid ?? realIndex.toString()),
+                        direction: DismissDirection.endToStart,
+                        confirmDismiss: (_) async {
+                          return await showDialog<bool>(
+                            context: context,
+                            builder: (context) => AlertDialog(
+                              title: const Text("Konfirmasi Hapus"),
+                              content: Text(
+                                'Yakin ingin menghapus "${log.title}"?\nData yang dihapus tidak dapat dikembalikan.',
+                              ),
+                              actions: [
+                                TextButton(
+                                  onPressed: () =>
+                                      Navigator.pop(context, false),
+                                  child: const Text("Batal"),
+                                ),
+                                ElevatedButton(
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: Colors.red,
+                                    foregroundColor: Colors.white,
+                                  ),
+                                  onPressed: () => Navigator.pop(context, true),
+                                  child: const Text("Hapus"),
+                                ),
+                              ],
+                            ),
+                          );
+                        },
+                        onDismissed: (_) async {
+                          await _controller.removeLog(realIndex);
+                          _refreshLogs();
+                        },
+                        background: Container(color: Colors.transparent),
+                        secondaryBackground: Container(
+                          margin: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 6,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.red,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          alignment: Alignment.centerRight,
+                          padding: const EdgeInsets.only(right: 20),
+                          child: const Icon(Icons.delete, color: Colors.white),
                         ),
-                        child: ListTile(
-                          isThreeLine: true,
-                          leading: const Icon(
-                            Icons.cloud_done,
-                            color: Colors.green,
+                        child: Card(
+                          margin: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 6,
                           ),
-                          title: Text(log.title),
-                          subtitle: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(log.description),
-                              const SizedBox(height: 2),
-                              Row(
-                                children: [
-                                  const Icon(
-                                    Icons.access_time,
-                                    size: 12,
-                                    color: Colors.grey,
-                                  ),
-                                  const SizedBox(width: 4),
-                                  Flexible(
-                                    child: Text(
-                                      TimeFormatter.relative(log.date),
-                                      overflow: TextOverflow.ellipsis,
-                                      style: const TextStyle(
-                                        fontSize: 11,
-                                        color: Colors.grey,
+                          child: ListTile(
+                            isThreeLine: true,
+                            leading: const Icon(
+                              Icons.cloud_done,
+                              color: Colors.green,
+                            ),
+                            title: Text(log.title),
+                            subtitle: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(log.description),
+                                const SizedBox(height: 2),
+                                Row(
+                                  children: [
+                                    const Icon(
+                                      Icons.access_time,
+                                      size: 12,
+                                      color: Colors.grey,
+                                    ),
+                                    const SizedBox(width: 4),
+                                    Flexible(
+                                      child: Text(
+                                        TimeFormatter.relative(log.date),
+                                        overflow: TextOverflow.ellipsis,
+                                        style: const TextStyle(
+                                          fontSize: 11,
+                                          color: Colors.grey,
+                                        ),
                                       ),
                                     ),
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 6,
-                                      vertical: 1,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: Colors.indigo.shade50,
-                                      borderRadius: BorderRadius.circular(4),
-                                    ),
-                                    child: Text(
-                                      log.category,
-                                      style: TextStyle(
-                                        fontSize: 11,
-                                        color: Colors.indigo.shade700,
+                                    const SizedBox(width: 8),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 6,
+                                        vertical: 1,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: Colors.indigo.shade50,
+                                        borderRadius: BorderRadius.circular(4),
+                                      ),
+                                      child: Text(
+                                        log.category,
+                                        style: TextStyle(
+                                          fontSize: 11,
+                                          color: Colors.indigo.shade700,
+                                        ),
                                       ),
                                     ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                            trailing: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                IconButton(
+                                  icon: const Icon(
+                                    Icons.edit,
+                                    color: Colors.blue,
                                   ),
-                                ],
-                              ),
-                            ],
-                          ),
-                          trailing: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              IconButton(
-                                icon: const Icon(
-                                  Icons.edit,
-                                  color: Colors.blue,
+                                  onPressed: () =>
+                                      _showEditLogDialog(realIndex, log),
                                 ),
-                                onPressed: () => _showEditLogDialog(index, log),
-                              ),
-                              IconButton(
-                                icon: const Icon(
-                                  Icons.delete,
-                                  color: Colors.red,
+                                IconButton(
+                                  icon: const Icon(
+                                    Icons.delete,
+                                    color: Colors.red,
+                                  ),
+                                  onPressed: () async {
+                                    final confirmed = await showDialog<bool>(
+                                      context: context,
+                                      builder: (context) => AlertDialog(
+                                        title: const Text("Konfirmasi Hapus"),
+                                        content: Text(
+                                          'Yakin ingin menghapus "${log.title}"?\nData yang dihapus tidak dapat dikembalikan.',
+                                        ),
+                                        actions: [
+                                          TextButton(
+                                            onPressed: () =>
+                                                Navigator.pop(context, false),
+                                            child: const Text("Batal"),
+                                          ),
+                                          ElevatedButton(
+                                            style: ElevatedButton.styleFrom(
+                                              backgroundColor: Colors.red,
+                                              foregroundColor: Colors.white,
+                                            ),
+                                            onPressed: () =>
+                                                Navigator.pop(context, true),
+                                            child: const Text("Hapus"),
+                                          ),
+                                        ],
+                                      ),
+                                    );
+                                    if (confirmed == true) {
+                                      await _controller.removeLog(realIndex);
+                                      _refreshLogs();
+                                    }
+                                  },
                                 ),
-                                onPressed: () async {
-                                  await _controller.removeLog(index);
-                                  _refreshLogs();
-                                },
-                              ),
-                            ],
+                              ],
+                            ),
                           ),
                         ),
                       );
