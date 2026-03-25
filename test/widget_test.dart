@@ -11,20 +11,18 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:logbook_app_001/main.dart';
 
 void main() {
-  testWidgets('Counter increments smoke test', (WidgetTester tester) async {
-    // Build our app and trigger a frame.
+  testWidgets('Onboarding smoke test', (WidgetTester tester) async {
+    final binding = TestWidgetsFlutterBinding.ensureInitialized();
+    await binding.setSurfaceSize(const Size(1080, 1920));
+
+    // Build app dan pastikan halaman awal onboarding tampil.
     await tester.pumpWidget(const MyApp());
+    await tester.pumpAndSettle();
 
-    // Verify that our counter starts at 0.
-    expect(find.text('0'), findsOneWidget);
-    expect(find.text('1'), findsNothing);
+    expect(find.text('Selamat Datang!'), findsOneWidget);
+    expect(find.text('Lewati'), findsOneWidget);
+    expect(find.text('Lanjut'), findsOneWidget);
 
-    // Tap the '+' icon and trigger a frame.
-    await tester.tap(find.byIcon(Icons.add));
-    await tester.pump();
-
-    // Verify that our counter has incremented.
-    expect(find.text('0'), findsNothing);
-    expect(find.text('1'), findsOneWidget);
+    await binding.setSurfaceSize(null);
   });
 }

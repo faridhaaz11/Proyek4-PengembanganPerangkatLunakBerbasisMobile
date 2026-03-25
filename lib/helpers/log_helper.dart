@@ -1,6 +1,5 @@
 import 'dart:developer' as dev;
 import 'dart:io';
-import 'package:flutter/widgets.dart';
 import 'package:intl/intl.dart'; // Tetap kita gunakan untuk presisi waktu
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:path_provider/path_provider.dart';
@@ -45,7 +44,7 @@ class LogHelper {
 
       // 4. Output ke Terminal (Agar Bapak bisa lihat di PC saat flutter run)
       // Format: [14:30:05] [INFO] [log_view.dart] -> Database Terhubung
-      print('$color[$timestamp][$label][$source] -> $message\x1B[0m');
+      stdout.writeln('$color[$timestamp][$label][$source] -> $message\x1B[0m');
 
       // 5. Tulis ke file log harian
       await _writeToFile(timestamp, label, source, message, level);
@@ -114,11 +113,11 @@ class LogHelper {
       // Cetak path log file sekali saja agar bisa diverifikasi
       if (!_logPathPrinted) {
         _logPathPrinted = true;
-        print('\x1B[33m[LOG FILE] -> ${logFile.path}\x1B[0m');
+        stdout.writeln('\x1B[33m[LOG FILE] -> ${logFile.path}\x1B[0m');
       }
     } catch (e) {
       // Tampilkan error jika penulisan file gagal (membantu debugging)
-      print('\x1B[31m[LOG FILE ERROR] -> $e\x1B[0m');
+      stdout.writeln('\x1B[31m[LOG FILE ERROR] -> $e\x1B[0m');
     }
   }
 }

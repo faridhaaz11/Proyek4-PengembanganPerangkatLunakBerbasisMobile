@@ -23,11 +23,6 @@ class _LoginViewState extends State<LoginView> {
 
   // State untuk Show/Hide Password
   bool _obscurePassword = true;
-
-  // State untuk batas percobaan login
-  int _loginAttempts = 0;
-  bool _isLoginDisabled = false;
-  int _countdown = 0;
   Timer? _timer;
 
   @override
@@ -39,82 +34,47 @@ class _LoginViewState extends State<LoginView> {
   }
 
   void _startCountdown() {
-    setState(() {
-      _isLoginDisabled = true;
-      _countdown = 10;
-    });
-
+    _timer?.cancel();
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
-      setState(() {
-        _countdown--;
-      });
-
-      if (_countdown <= 0) {
+      _controller.tickCountdown();
+      if (!_controller.isLoginDisabled) {
         timer.cancel();
-        setState(() {
-          _isLoginDisabled = false;
-          _loginAttempts = 0; // Reset percobaan setelah countdown selesai
-        });
       }
+
+      if (mounted) setState(() {});
     });
+
+    if (mounted) setState(() {});
   }
 
   void _handleLogin() {
-    String user = _userController.text.trim();
-    String pass = _passController.text;
+    final user = _userController.text.trim();
+    final pass = _passController.text;
+    final result = _controller.attemptLogin(user, pass);
 
-    // Validasi field tidak boleh kosong
-    if (user.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text("Username tidak boleh kosong!"),
-          backgroundColor: Colors.orange,
-        ),
-      );
-      return;
-    }
-
-    if (pass.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text("Password tidak boleh kosong!"),
-          backgroundColor: Colors.orange,
-        ),
-      );
-      return;
-    }
-
-    bool isSuccess = _controller.login(user, pass);
-
-    if (isSuccess) {
-      // Reset attempts on success
-      _loginAttempts = 0;
+    if (result.status == LoginActionStatus.success) {
+      final userRole = result.role ?? _controller.getRole(user);
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(builder: (context) => LogView(username: user)),
+        MaterialPageRoute(
+          builder: (context) => LogView(username: user, role: userRole),
+        ),
       );
     } else {
-      setState(() {
-        _loginAttempts++;
-      });
+      final warningMessage = result.message.contains('tidak boleh kosong!');
 
-      // Cek apakah sudah 3 kali gagal
-      if (_loginAttempts >= 3) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text("Terlalu banyak percobaan! Tunggu 10 detik."),
-            backgroundColor: Colors.red,
-          ),
-        );
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(result.message),
+          backgroundColor: warningMessage ? Colors.orange : Colors.red,
+        ),
+      );
+
+      if (result.shouldStartCountdown) {
         _startCountdown();
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text("Login Gagal! Percobaan ke-$_loginAttempts dari 3"),
-            backgroundColor: Colors.red,
-          ),
-        );
       }
+
+      setState(() {});
     }
   }
 
@@ -259,7 +219,9 @@ class _LoginViewState extends State<LoginView> {
                 SizedBox(
                   height: 50,
                   child: ElevatedButton(
-                    onPressed: _isLoginDisabled ? null : _handleLogin,
+                    onPressed: _controller.isLoginDisabled
+                        ? null
+                        : _handleLogin,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFF5B4B8A),
                       foregroundColor: Colors.white,
@@ -269,9 +231,9 @@ class _LoginViewState extends State<LoginView> {
                       ),
                       elevation: 2,
                     ),
-                    child: _isLoginDisabled
+                    child: _controller.isLoginDisabled
                         ? Text(
-                            "Tunggu $_countdown detik...",
+                            "Tunggu ${_controller.countdown} detik...",
                             style: const TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.w600,

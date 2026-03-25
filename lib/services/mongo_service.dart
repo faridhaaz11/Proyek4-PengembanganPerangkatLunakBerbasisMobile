@@ -3,8 +3,9 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:logbook_app_001/helpers/log_helper.dart';
 import 'package:logbook_app_001/helpers/connection_guard.dart';
 import 'package:logbook_app_001/features/logbook/models/log_model.dart';
+import 'package:logbook_app_001/services/i_mongo_service.dart';
 
-class MongoService {
+class MongoService implements IMongoService {
   static final MongoService _instance = MongoService._internal();
 
   Db? _db;
@@ -14,6 +15,12 @@ class MongoService {
 
   factory MongoService() => _instance;
   MongoService._internal();
+
+  Map<String, dynamic> _buildCloudPayload(LogModel log) {
+    final payload = log.toMap();
+    payload['syncedAt'] ??= DateTime.now().toIso8601String();
+    return payload;
+  }
 
   Future<DbCollection> _getSafeCollection() async {
     if (_db == null || !_db!.isConnected || _collection == null) {
@@ -27,6 +34,7 @@ class MongoService {
     return _collection!;
   }
 
+  @override
   Future<void> connect() async {
     try {
       // Cek koneksi internet sebelum mencoba menghubungi Atlas
@@ -63,6 +71,7 @@ class MongoService {
     }
   }
 
+  @override
   Future<List<LogModel>> getLogs({required String username}) async {
     try {
       final collection = await _getSafeCollection();
@@ -85,10 +94,68 @@ class MongoService {
     }
   }
 
+  // ── READ by Team (Collaborative Sync — Langkah 4) ────────────────────────
+  @override
+  Future<List<LogModel>> getLogsByTeam(String teamId) async {
+    try {
+      final collection = await _getSafeCollection();
+      await LogHelper.writeLog(
+        "INFO: Fetching data for Team: $teamId",
+        source: _source,
+        level: 3,
+      );
+      final List<Map<String, dynamic>> data = await collection
+          .find(where.eq('teamId', teamId))
+          .toList();
+      return data.map((json) => LogModel.fromMap(json)).toList();
+    } catch (e) {
+      await LogHelper.writeLog(
+        "ERROR: Fetch Failed (Team) - $e",
+        source: _source,
+        level: 1,
+      );
+      return [];
+    }
+  }
+
+  // ── UPSERT (Insert or Replace — mencegah duplikasi) ──────────────────────
+  /// Melakukan Insert jika belum ada, atau Replace jika sudah ada.
+  /// Digunakan oleh background sync agar tidak menimbulkan dokumen ganda.
+  @override
+  Future<void> upsertLog(LogModel log) async {
+    try {
+      if (log.id == null) {
+        await insertLog(log);
+        return;
+      }
+      final collection = await _getSafeCollection();
+      final payload = _buildCloudPayload(log);
+      await collection.replaceOne(
+        where.id(ObjectId.fromHexString(log.id!)),
+        payload,
+        upsert: true, // Insert jika tidak ditemukan, Replace jika ada
+      );
+      await LogHelper.writeLog(
+        "DATABASE: Upsert '${log.title}' Berhasil",
+        source: _source,
+        level: 2,
+      );
+    } catch (e) {
+      await LogHelper.writeLog(
+        "DATABASE: Upsert Gagal - $e",
+        source: _source,
+        level: 1,
+      );
+      rethrow;
+    }
+  }
+
+  @override
   Future<void> insertLog(LogModel log) async {
     try {
       final collection = await _getSafeCollection();
-      await collection.insertOne(log.toMap());
+      final payload = _buildCloudPayload(log);
+      await collection.insertOne(payload);
       await LogHelper.writeLog(
         "SUCCESS: Data '${log.title}' Saved to Cloud",
         source: _source,
@@ -104,12 +171,18 @@ class MongoService {
     }
   }
 
+  @override
   Future<void> updateLog(LogModel log) async {
     try {
       final collection = await _getSafeCollection();
-      if (log.id == null)
+      if (log.id == null) {
         throw Exception("ID Log tidak ditemukan untuk update");
-      await collection.replaceOne(where.id(log.id!), log.toMap());
+      }
+      final payload = _buildCloudPayload(log);
+      await collection.replaceOne(
+        where.id(ObjectId.fromHexString(log.id!)),
+        payload,
+      );
       await LogHelper.writeLog(
         "DATABASE: Update '${log.title}' Berhasil",
         source: _source,
@@ -125,10 +198,11 @@ class MongoService {
     }
   }
 
-  Future<void> deleteLog(ObjectId id) async {
+  @override
+  Future<void> deleteLog(String id) async {
     try {
       final collection = await _getSafeCollection();
-      await collection.remove(where.id(id));
+      await collection.remove(where.id(ObjectId.fromHexString(id)));
       await LogHelper.writeLog(
         "DATABASE: Hapus ID $id Berhasil",
         source: _source,
@@ -144,6 +218,7 @@ class MongoService {
     }
   }
 
+  @override
   Future<void> close() async {
     if (_db != null) {
       await _db!.close();

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'package:logbook_app_001/features/onboarding/onboarding_controller.dart';
 import 'package:logbook_app_001/features/auth/login_view.dart';
 import 'package:logbook_app_001/helpers/log_helper.dart';
 
@@ -11,7 +12,7 @@ class OnboardingView extends StatefulWidget {
 }
 
 class _OnboardingViewState extends State<OnboardingView> {
-  int step = 1; // Variabel state untuk melacak langkah onboarding
+  final OnboardingController _controller = OnboardingController();
 
   @override
   void initState() {
@@ -44,22 +45,20 @@ class _OnboardingViewState extends State<OnboardingView> {
   ];
 
   void _nextStep() {
-    if (step > 2) {
-      // Jika step > 3 setelah increment, pindah ke LoginView
+    final shouldGoToLogin = _controller.nextStep();
+    if (shouldGoToLogin) {
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(builder: (context) => const LoginView()),
       );
     } else {
-      setState(() {
-        step++;
-      });
+      setState(() {});
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final currentData = _onboardingData[step - 1];
+    final currentData = _onboardingData[_controller.step - 1];
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -130,10 +129,10 @@ class _OnboardingViewState extends State<OnboardingView> {
                 children: List.generate(3, (index) {
                   return Container(
                     margin: const EdgeInsets.symmetric(horizontal: 4),
-                    width: step == index + 1 ? 24 : 8,
+                    width: _controller.step == index + 1 ? 24 : 8,
                     height: 8,
                     decoration: BoxDecoration(
-                      color: step == index + 1
+                      color: _controller.step == index + 1
                           ? const Color(0xFF7C6DAF)
                           : const Color(0xFFE8E0F0),
                       borderRadius: BorderRadius.circular(4),
@@ -159,7 +158,7 @@ class _OnboardingViewState extends State<OnboardingView> {
                     elevation: 0,
                   ),
                   child: Text(
-                    step < 3 ? 'Lanjut' : 'Mulai',
+                    _controller.isLastStep ? 'Mulai' : 'Lanjut',
                     style: const TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.w600,
