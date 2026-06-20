@@ -24,12 +24,12 @@ class LoginController {
     'user1': 'user123',
   };
 
-  // Peta Peran (RBAC): tentukan siapa Ketua dan siapa Anggota
-  // 'admin' adalah Ketua yang memiliki akses penuh
+  // Peta Peran (RBAC): tentukan role berdasarkan username
+  // 'admin' memiliki akses penuh sebagai admin
   final Map<String, String> _roles = {
     'admin': 'admin',
-    'faridha': 'faridha',
-    'user1': 'user1',
+    'faridha': 'user',
+    'user1': 'user',
   };
 
   int _loginAttempts = 0;

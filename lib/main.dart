@@ -1,4 +1,5 @@
 // main.dart
+import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:hive_flutter/hive_flutter.dart';
@@ -8,9 +9,17 @@ import 'package:logbook_app_001/features/onboarding/onboarding_view.dart';
 import 'package:logbook_app_001/helpers/log_helper.dart';
 import 'package:logbook_app_001/services/mongo_service.dart';
 
+List<CameraDescription> cameras = [];
+
 void main() async {
   // Wajib untuk operasi asinkron sebelum runApp
   WidgetsFlutterBinding.ensureInitialized();
+
+  try {
+    cameras = await availableCameras();
+  } on CameraException catch (e) {
+    print('Error: ${e.code}\nError Message: ${e.description}');
+  }
 
   // Inisialisasi locale Indonesia untuk intl (TimeFormatter)
   await initializeDateFormatting('id_ID');

@@ -37,7 +37,7 @@ class LogController {
   StreamSubscription<bool>? _connectivitySub;
 
   LogController({
-    this.userRole = 'Anggota',
+    this.userRole = 'user',
     this.userId = '',
     this.teamId = 'no_team',
     IMongoService? mongoService,

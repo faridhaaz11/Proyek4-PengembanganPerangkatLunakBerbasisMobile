@@ -16,9 +16,8 @@ class AccessControlService {
 
   // Matrix perizinan: setiap role memiliki daftar aksi yang diizinkan
   static final Map<String, List<String>> _rolePermissions = {
-    'Ketua': [actionCreate, actionRead, actionUpdate, actionDelete],
-    'Anggota': [actionCreate, actionRead],
-    'Asisten': [actionRead, actionUpdate],
+    'admin': [actionCreate, actionRead, actionUpdate, actionDelete],
+    'user': [actionCreate, actionRead],
   };
 
   /// Memeriksa apakah [role] diperbolehkan menjalankan [action].
@@ -40,12 +39,12 @@ class AccessControlService {
   /// Mengembalikan label badge peran untuk ditampilkan di UI.
   static String roleBadge(String role) {
     switch (role) {
-      case 'Ketua':
-        return 'Ketua';
-      case 'Asisten':
-        return 'Asisten';
+      case 'admin':
+        return 'Admin';
+      case 'user':
+        return 'User';
       default:
-        return 'Anggota';
+        return 'User';
     }
   }
 }

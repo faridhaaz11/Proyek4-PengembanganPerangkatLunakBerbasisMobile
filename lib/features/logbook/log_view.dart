@@ -8,6 +8,7 @@ import 'package:logbook_app_001/features/onboarding/onboarding_view.dart';
 import 'package:logbook_app_001/helpers/log_helper.dart';
 import 'package:logbook_app_001/helpers/connection_guard.dart';
 import 'package:logbook_app_001/helpers/time_formatter.dart';
+import 'package:logbook_app_001/features/vision/vision_view.dart';
 import 'package:logbook_app_001/services/access_control_service.dart';
 
 class LogView extends StatefulWidget {
@@ -867,11 +868,29 @@ class _LogViewState extends State<LogView> {
           ),
         ],
       ),
-      floatingActionButton: FloatingActionButton(
-        // Langkah 3: navigasi ke halaman editor penuh
-        onPressed: () => _goToEditor(),
-        tooltip: 'Tambah Catatan',
-        child: const Icon(Icons.add),
+      floatingActionButton: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          FloatingActionButton(
+            heroTag: 'fab_vision',
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const VisionView()),
+              );
+            },
+            tooltip: 'Buka Smart Vision',
+            child: const Icon(Icons.camera_alt),
+          ),
+          const SizedBox(width: 10),
+          FloatingActionButton(
+            heroTag: 'fab_add_log',
+            // Langkah 3: navigasi ke halaman editor penuh
+            onPressed: () => _goToEditor(),
+            tooltip: 'Tambah Catatan',
+            child: const Icon(Icons.add),
+          ),
+        ],
       ),
     );
   }

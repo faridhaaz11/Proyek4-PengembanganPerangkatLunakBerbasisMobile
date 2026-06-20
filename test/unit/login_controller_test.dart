@@ -31,7 +31,7 @@ void main() {
       final result = controller.attemptLogin('admin', '123');
 
       expect(result.status, LoginActionStatus.success);
-      expect(result.role, 'Ketua');
+      expect(result.role, 'admin');
       expect(controller.loginAttempts, 0);
       expect(controller.isLoginDisabled, false);
     });
@@ -78,7 +78,7 @@ void main() {
 
       final result = controller.attemptLogin('admin', '123');
       expect(result.status, LoginActionStatus.success);
-      expect(result.role, 'Ketua');
+      expect(result.role, 'admin');
     });
   });
 }
