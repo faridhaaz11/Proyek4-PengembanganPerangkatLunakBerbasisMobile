@@ -1,10 +1,10 @@
-# LogBook App 001
+# LogBook App
 
 Repositori ini berisi pengembangan aplikasi Flutter bertahap sebagai tugas praktikum, mulai dari counter sederhana hingga aplikasi Smart Patrol Vision dengan pemrosesan citra digital.
 
 ---
 
-## Modul 1 — LogBook Counter Application
+## LogBook Counter Application
 
 ### Deskripsi
 
@@ -61,7 +61,7 @@ Penerapan prinsip Single Responsibility Principle (SRP) sangat membantu selama p
 
 ---
 
-## Modul 6 — ETS Smart Patrol Vision
+## ETS Smart Patrol Vision
 
 ### Ringkasan
 
